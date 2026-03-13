@@ -1,0 +1,2 @@
+[console_scripts]
+mantriq = mantriq_cli:app

@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: mantriq
+Version: 0.1.0
+Requires-Dist: typer>=0.9.0
+Requires-Dist: rich>=13.0.0
+Requires-Dist: prompt-toolkit>=3.0.38
+Requires-Dist: langchain>=0.1.0
+Requires-Dist: langchain-community>=0.0.10
+Requires-Dist: ollama>=0.1.0
+Requires-Dist: pydantic>=2.0.0
+Dynamic: requires-dist
