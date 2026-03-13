@@ -28,9 +28,9 @@ custom_theme = Theme({
 
 console = Console(theme=custom_theme)
 
-def get_pixel_title(text: str, color: str = "bright_yellow"):
+def get_pixel_title(text: str, color: str = "bright_blue"):
     """Generates a pixel-style ASCII art title."""
-    fig = pyfiglet.Figlet(font='block') # 'block' or 'banner' for thicker pixel look
+    fig = pyfiglet.Figlet(font='slant') # 'slant' for a more dynamic and attractive look
     ascii_art = fig.renderText(text)
     return Text(ascii_art, style=color)
 
@@ -39,7 +39,7 @@ def generate_kilo_dashboard(active_agent: str, backend: str = "Local", tip_text:
     layout = Layout()
     
     # Header: Pixel Title
-    title_art = get_pixel_title("MANTRIQ", color="bright_yellow")
+    title_art = get_pixel_title("MANTRIQ", color="bright_blue")
     header = Align.center(title_art, vertical="middle")
     
     # Central Box (Dark Grey Panel)
