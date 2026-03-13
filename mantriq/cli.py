@@ -152,10 +152,28 @@ def handle_command(cmd_text):
                 agent = agent_class()
                 response = agent.process(session_state.loaded_code)
                 session_state.history.append((session_state.active_agent, response))
-                redraw_header()
+                
+                # Show typing animation for the response
+                from rich.live import Live
+                dashboard = TUIDashboard(session_state.active_agent, get_engine().backend.capitalize())
+                dashboard.last_load = session_state.last_load
+                dashboard.response_history = session_state.history
+                dashboard.status_msg = "Completed"
+                
+                with Live(dashboard.generate_dashboard(), refresh_per_second=4) as live:
+                    for i in range(1, len(response) + 1, 5):
+                        # Update the last entry in history for a typing effect
+                        session_state.history[-1] = (session_state.active_agent, response[:i])
+                        dashboard.response_history = session_state.history
+                        live.update(dashboard.generate_dashboard())
+                        time.sleep(0.01)
+                    
+                    # Ensure full response is set
+                    session_state.history[-1] = (session_state.active_agent, response)
+                    dashboard.response_history = session_state.history
+                    live.update(dashboard.generate_dashboard())
             except Exception as e:
                 console.print(f"[red]Error during analysis: {str(e)}[/red]")
-                # Also print the trace for debugging if it's a runtime error
                 if "RuntimeError" in str(type(e)):
                      console.print("[dim]Check the terminal logs for more details.[/dim]")
     else:
@@ -166,7 +184,24 @@ def handle_command(cmd_text):
                 agent = agent_class()
                 response = agent.process(cmd_text)
                 session_state.history.append(("Chat", response))
-                redraw_header()
+                
+                # Show typing animation for the response
+                from rich.live import Live
+                dashboard = TUIDashboard(session_state.active_agent, get_engine().backend.capitalize())
+                dashboard.last_load = session_state.last_load
+                dashboard.response_history = session_state.history
+                dashboard.status_msg = "Completed"
+                
+                with Live(dashboard.generate_dashboard(), refresh_per_second=4) as live:
+                    for i in range(1, len(response) + 1, 5):
+                        session_state.history[-1] = ("Chat", response[:i])
+                        dashboard.response_history = session_state.history
+                        live.update(dashboard.generate_dashboard())
+                        time.sleep(0.01)
+                    
+                    session_state.history[-1] = ("Chat", response)
+                    dashboard.response_history = session_state.history
+                    live.update(dashboard.generate_dashboard())
             except Exception as e:
                 console.print(f"[red]Error during chat: {str(e)}[/red]")
 

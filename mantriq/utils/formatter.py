@@ -11,6 +11,7 @@ from rich import box
 import pyfiglet
 import os
 import time
+from datetime import datetime
 
 console = Console()
 
@@ -36,14 +37,33 @@ class TUIDashboard:
             Layout(name="footer", size=3)
         )
         layout["main"].split_row(
-            Layout(name="sidebar", size=30),
+            Layout(name="sidebar", size=32),
             Layout(name="body", ratio=1)
         )
         return layout
 
-    def get_header(self) -> Align:
+    def get_header(self) -> Panel:
         title = get_pixel_title("MANTRIQ", "bright_blue")
-        return Align.center(title)
+        time_text = Text(f"{datetime.now().strftime('%H:%M:%S')}", style="bright_yellow")
+        
+        # Header table for title and system info
+        header_table = Table.grid(expand=True)
+        header_table.add_column(justify="left", ratio=1)
+        header_table.add_column(justify="center", ratio=2)
+        header_table.add_column(justify="right", ratio=1)
+        
+        header_table.add_row(
+            Text(f" V 1.0.0", style="grey37"),
+            Align.center(title),
+            time_text
+        )
+        
+        return Panel(
+            header_table,
+            box=box.MINIMAL,
+            border_style="blue",
+            padding=(0, 1)
+        )
 
     def get_sidebar(self) -> Panel:
         table = Table.grid(padding=1)
@@ -53,28 +73,41 @@ class TUIDashboard:
         table.add_row("Agent:", f"[bright_cyan]{self.active_agent}[/bright_cyan]")
         table.add_row("Backend:", f"[bright_yellow]{self.backend}[/bright_yellow]")
         table.add_row("Status:", f"[green]{self.status_msg}[/green]")
-        table.add_row("Loaded:", f"[dim]{self.last_load}[/dim]")
+        table.add_row("Context:", f"[dim]{self.last_load}[/dim]")
+        
+        table.add_section()
+        table.add_row("CPU Usage:", "[dim]Normal[/dim]")
+        table.add_row("Mode:", "[dim]Standalone[/dim]")
         
         return Panel(
             Align.center(table),
-            title="[bold blue]Session[/bold blue]",
+            title="[bold blue]Dashboard[/bold blue]",
             border_style="blue",
-            box=box.ROUNDED
+            box=box.ROUNDED,
+            padding=(1, 2)
         )
 
     def get_body(self) -> Panel:
         if not self.response_history:
             welcome_text = Text.assemble(
-                ("\n\nWelcome to MANTRIQ Standalone CLI\n", "bold white"),
-                ("Type anything to chat or use 'load <file>' to start analysis.\n\n", "grey50"),
-                ("● ", "bright_blue"), ("TAB", "white"), (" to cycle agents\n", "grey50"),
-                ("● ", "bright_blue"), ("Ctrl+Q", "white"), (" to exit\n", "grey50")
+                ("\n\n" + "─" * 40 + "\n", "grey23"),
+                ("MANTRIQ INTELLIGENCE\n", "bold bright_blue"),
+                ("─" * 40 + "\n\n", "grey23"),
+                ("Welcome, Developer.\n\n", "white"),
+                ("MANTRIQ is a fully standalone AI coding assistant.\n", "grey50"),
+                ("Type anything to chat or use ", "grey50"), ("'load'", "white"), (" for file analysis.\n\n", "grey50"),
+                ("Quick Keys:\n", "white"),
+                ("● ", "bright_blue"), ("TAB", "white"), ("    Cycle Agents\n", "grey50"),
+                ("● ", "bright_blue"), ("CTRL+E", "white"), (" Explain Logic\n", "grey50"),
+                ("● ", "bright_blue"), ("CTRL+D", "white"), (" Debug Error\n", "grey50"),
+                ("● ", "bright_blue"), ("CTRL+Q", "white"), (" Exit Application\n", "grey50")
             )
             return Panel(
                 Align.center(welcome_text),
-                title="[bold blue]Console[/bold blue]",
+                title="[bold blue]Output Terminal[/bold blue]",
                 border_style="blue",
-                box=box.ROUNDED
+                box=box.ROUNDED,
+                padding=(1, 2)
             )
         
         # Show last response
@@ -82,22 +115,27 @@ class TUIDashboard:
         md = Markdown(last_resp)
         return Panel(
             md,
-            title=f"[bold blue]{last_agent} Response[/bold blue]",
+            title=f"[bold blue]{last_agent} Analysis[/bold blue]",
             border_style="blue",
             box=box.ROUNDED,
             padding=(1, 2)
         )
 
-    def get_footer(self) -> Align:
+    def get_footer(self) -> Panel:
         shortcuts = Text.assemble(
-            ("TAB", "bright_blue"), (" Agents  ", "grey50"),
-            ("CTRL+Q", "bright_blue"), (" Exit  ", "grey50"),
-            ("LOAD", "bright_blue"), (" Context  ", "grey50"),
+            ("TAB", "bright_blue"), (" Next Agent  ", "grey50"),
+            ("CTRL+Q", "bright_blue"), (" Quit  ", "grey50"),
+            ("LOAD", "bright_blue"), (" Import  ", "grey50"),
+            ("CLEAR", "bright_blue"), (" Wipe  ", "grey50"),
             ("HELP", "bright_blue"), (" Menu", "grey50")
         )
-        return Align.center(shortcuts)
+        return Panel(
+            Align.center(shortcuts),
+            box=box.MINIMAL,
+            border_style="blue"
+        )
 
-    def generate_dashboard(self) -> Layout:
+    def generate_dashboard(self, height: int = 40) -> Layout:
         layout = self.make_layout()
         layout["header"].update(self.get_header())
         layout["sidebar"].update(self.get_sidebar())
@@ -106,13 +144,14 @@ class TUIDashboard:
         return layout
 
 def print_header(active_agent: str, backend: str = "Local"):
-    """Fallback for non-live updates."""
+    """Prints a fullscreen-style dashboard."""
     dashboard = TUIDashboard(active_agent, backend)
     console.clear()
+    # We use the full height to ensure it looks like a fullscreen app
     console.print(dashboard.generate_dashboard())
 
 def format_response(agent_name: str, response: str):
-    """Formats the AI response with an 'animated' typing feel (simulated by live update)."""
+    """Fallback for direct printing."""
     title = f"MANTRIQ {agent_name} Report"
     md = Markdown(response)
     panel = Panel(
