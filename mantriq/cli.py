@@ -16,7 +16,7 @@ import typer
 
 from mantriq.agents import AGENT_MAP
 from mantriq.utils.file_loader import load_file
-from mantriq.utils.formatter import format_response, format_help, print_header
+from mantriq.utils.formatter import format_response_frame, format_help, print_header
 from mantriq.core.llm_engine import get_engine
 
 # Initialize Typer app
@@ -147,8 +147,15 @@ def handle_command(cmd_text):
                 agent = agent_class()
                 response = agent.process(session_state.loaded_code)
                 
-                # Simple and elegant display
-                format_response(session_state.active_agent, response)
+                # Smooth typing animation
+                from rich.live import Live
+                with Live(format_response_frame(session_state.active_agent, ""), refresh_per_second=10) as live:
+                    # Type out the response 10 characters at a time for smoothness
+                    for i in range(1, len(response) + 1, 10):
+                        live.update(format_response_frame(session_state.active_agent, response[:i]))
+                        time.sleep(0.01)
+                    # Final update to ensure full text is shown
+                    live.update(format_response_frame(session_state.active_agent, response))
             except Exception as e:
                 console.print(f"[red]Error during analysis: {str(e)}[/red]")
                 if "RuntimeError" in str(type(e)):
@@ -161,8 +168,13 @@ def handle_command(cmd_text):
                 agent = agent_class()
                 response = agent.process(cmd_text)
                 
-                # Simple and elegant display
-                format_response("Chat", response)
+                # Smooth typing animation
+                from rich.live import Live
+                with Live(format_response_frame("Chat", ""), refresh_per_second=10) as live:
+                    for i in range(1, len(response) + 1, 10):
+                        live.update(format_response_frame("Chat", response[:i]))
+                        time.sleep(0.01)
+                    live.update(format_response_frame("Chat", response))
             except Exception as e:
                 console.print(f"[red]Error during chat: {str(e)}[/red]")
 
