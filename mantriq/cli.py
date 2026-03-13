@@ -16,7 +16,7 @@ import typer
 
 from mantriq.agents import AGENT_MAP
 from mantriq.utils.file_loader import load_file
-from mantriq.utils.formatter import format_response, format_help, print_header, TUIDashboard
+from mantriq.utils.formatter import format_response, format_help, print_header
 from mantriq.core.llm_engine import get_engine
 
 # Initialize Typer app
@@ -29,7 +29,6 @@ class MantriqSession:
         self.current_agent_idx = 0
         self.loaded_code = ""
         self.last_load = "None"
-        self.history = []
         self.is_running = True
         self.should_redraw = False
 
@@ -59,11 +58,7 @@ kb = KeyBindings()
 def redraw_header():
     """Helper to redraw the TUI header smoothly."""
     engine = get_engine()
-    dashboard = TUIDashboard(session_state.active_agent, engine.backend.capitalize())
-    dashboard.last_load = session_state.last_load
-    dashboard.response_history = session_state.history
-    console.clear()
-    console.print(dashboard.generate_dashboard())
+    print_header(session_state.active_agent, engine.backend.capitalize())
 
 @kb.add('tab')
 def _(event):
@@ -151,27 +146,9 @@ def handle_command(cmd_text):
                 agent_class = AGENT_MAP[session_state.active_agent]
                 agent = agent_class()
                 response = agent.process(session_state.loaded_code)
-                session_state.history.append((session_state.active_agent, response))
                 
-                # Show typing animation for the response
-                from rich.live import Live
-                dashboard = TUIDashboard(session_state.active_agent, get_engine().backend.capitalize())
-                dashboard.last_load = session_state.last_load
-                dashboard.response_history = session_state.history
-                dashboard.status_msg = "Completed"
-                
-                with Live(dashboard.generate_dashboard(), refresh_per_second=4) as live:
-                    for i in range(1, len(response) + 1, 5):
-                        # Update the last entry in history for a typing effect
-                        session_state.history[-1] = (session_state.active_agent, response[:i])
-                        dashboard.response_history = session_state.history
-                        live.update(dashboard.generate_dashboard())
-                        time.sleep(0.01)
-                    
-                    # Ensure full response is set
-                    session_state.history[-1] = (session_state.active_agent, response)
-                    dashboard.response_history = session_state.history
-                    live.update(dashboard.generate_dashboard())
+                # Simple and elegant display
+                format_response(session_state.active_agent, response)
             except Exception as e:
                 console.print(f"[red]Error during analysis: {str(e)}[/red]")
                 if "RuntimeError" in str(type(e)):
@@ -183,25 +160,9 @@ def handle_command(cmd_text):
                 agent_class = AGENT_MAP["Chat"]
                 agent = agent_class()
                 response = agent.process(cmd_text)
-                session_state.history.append(("Chat", response))
                 
-                # Show typing animation for the response
-                from rich.live import Live
-                dashboard = TUIDashboard(session_state.active_agent, get_engine().backend.capitalize())
-                dashboard.last_load = session_state.last_load
-                dashboard.response_history = session_state.history
-                dashboard.status_msg = "Completed"
-                
-                with Live(dashboard.generate_dashboard(), refresh_per_second=4) as live:
-                    for i in range(1, len(response) + 1, 5):
-                        session_state.history[-1] = ("Chat", response[:i])
-                        dashboard.response_history = session_state.history
-                        live.update(dashboard.generate_dashboard())
-                        time.sleep(0.01)
-                    
-                    session_state.history[-1] = ("Chat", response)
-                    dashboard.response_history = session_state.history
-                    live.update(dashboard.generate_dashboard())
+                # Simple and elegant display
+                format_response("Chat", response)
             except Exception as e:
                 console.print(f"[red]Error during chat: {str(e)}[/red]")
 
