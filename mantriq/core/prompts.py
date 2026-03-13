@@ -53,6 +53,16 @@ def get_prompt_template(agent_name: str) -> PromptTemplate:
         "Explain": EXPLAIN_PROMPT,
         "Debug": DEBUG_PROMPT,
         "Review": REVIEW_PROMPT,
-        "Optimize": OPTIMIZE_PROMPT
+        "Optimize": OPTIMIZE_PROMPT,
+        "Chat": CHAT_PROMPT
     }
     return PromptTemplate.from_template(prompts.get(agent_name, EXPLAIN_PROMPT))
+
+CHAT_PROMPT = """You are MANTRIQ, a highly capable AI coding assistant. You are in a conversational mode.
+You can answer general questions, discuss software architecture, explain programming concepts, or just chat about tech.
+
+User message:
+{code}
+
+Provide a helpful, concise, and professional response.
+"""

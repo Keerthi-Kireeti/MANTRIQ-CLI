@@ -38,6 +38,7 @@ def format_help():
     table.add_row("load <file>", "Load code from a file")
     table.add_row("paste", "Paste multi-line code (Alt+Enter to finish)")
     table.add_row("analyze", "Run active agent on loaded code")
+    table.add_row("<text>", "Chat with MANTRIQ directly")
     table.add_row("clear", "Clear terminal screen")
     table.add_row("refresh", "Redraw the TUI header")
     table.add_row("agent", "Show current active agent")
@@ -65,7 +66,7 @@ def print_header(active_agent: str, backend: str = "Local"):
     # 2. Main Search/Status Box (Simplified look)
     # Matching the dark grey box in the image
     status_content = Text.assemble(
-        ("Ask anything... ", "grey50"),
+        ("Type anything to chat... ", "grey50"),
         ("\"Explain the logic of this code\"", "grey37")
     )
     

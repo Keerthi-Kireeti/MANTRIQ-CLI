@@ -25,11 +25,12 @@ console = Console()
 
 class MantriqSession:
     def __init__(self):
-        self.agents = ["Explain", "Debug", "Review", "Optimize"]
+        self.agents = ["Chat", "Explain", "Debug", "Review", "Optimize"]
         self.current_agent_idx = 0
         self.loaded_code = ""
         self.history = []
         self.is_running = True
+        self.should_redraw = False
 
     @property
     def active_agent(self):
@@ -41,11 +42,13 @@ class MantriqSession:
             self.current_agent_idx = (self.current_agent_idx - 1) % len(self.agents)
         else:
             self.current_agent_idx = (self.current_agent_idx + 1) % len(self.agents)
+        self.should_redraw = True
 
     def set_agent(self, name):
         """Sets the active agent by name."""
         if name in self.agents:
             self.current_agent_idx = self.agents.index(name)
+            self.should_redraw = True
 
 session_state = MantriqSession()
 
@@ -60,32 +63,26 @@ def redraw_header():
 @kb.add('tab')
 def _(event):
     session_state.cycle_agent()
-    event.app.run_in_terminal(redraw_header)
 
 @kb.add('s-tab')
 def _(event):
     session_state.cycle_agent(reverse=True)
-    event.app.run_in_terminal(redraw_header)
 
 @kb.add('c-e')
 def _(event):
     session_state.set_agent("Explain")
-    event.app.run_in_terminal(redraw_header)
 
 @kb.add('c-d')
 def _(event):
     session_state.set_agent("Debug")
-    event.app.run_in_terminal(redraw_header)
 
 @kb.add('c-r')
 def _(event):
     session_state.set_agent("Review")
-    event.app.run_in_terminal(redraw_header)
 
 @kb.add('c-o')
 def _(event):
     session_state.set_agent("Optimize")
-    event.app.run_in_terminal(redraw_header)
 
 @kb.add('c-q')
 def _(event):
@@ -154,10 +151,15 @@ def handle_command(cmd_text):
                 if "RuntimeError" in str(type(e)):
                      console.print("[dim]Check the terminal logs for more details.[/dim]")
     else:
-        # If it's not a recognized command, maybe it's just a query?
-        # For now, let's treat it as a request to analyze the loaded code with a query if we want to expand.
-        # But per requirements, only specific commands are listed.
-        console.print(f"[red]Unknown command: {cmd}. Type 'help' for available commands.[/red]")
+        # If it's not a recognized command, treat it as a chat query
+        with console.status(f"[yellow]MANTRIQ is thinking...[/yellow]", spinner="dots"):
+            try:
+                agent_class = AGENT_MAP["Chat"]
+                agent = agent_class()
+                response = agent.process(cmd_text)
+                format_response("Chat", response)
+            except Exception as e:
+                console.print(f"[red]Error during chat: {str(e)}[/red]")
 
 @app.command()
 def main():
@@ -184,10 +186,14 @@ def main():
     
     while session_state.is_running:
         try:
+            if session_state.should_redraw:
+                redraw_header()
+                session_state.should_redraw = False
+                
             with patch_stdout():
                 user_input = session.prompt("mantriq > ")
-                # Check if we need to redraw header after a long response or clear
-                handle_command(user_input)
+                if user_input.strip():
+                    handle_command(user_input)
         except (KeyboardInterrupt, EOFError):
             break
 
