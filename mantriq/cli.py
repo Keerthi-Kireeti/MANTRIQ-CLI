@@ -16,7 +16,7 @@ import typer
 
 from mantriq.agents import AGENT_MAP
 from mantriq.utils.file_loader import load_file
-from mantriq.utils.formatter import format_response, format_help, print_header
+from mantriq.utils.formatter import format_response, format_help, print_header, TUIDashboard
 from mantriq.core.llm_engine import get_engine
 
 # Initialize Typer app
@@ -28,6 +28,7 @@ class MantriqSession:
         self.agents = ["Chat", "Explain", "Debug", "Review", "Optimize"]
         self.current_agent_idx = 0
         self.loaded_code = ""
+        self.last_load = "None"
         self.history = []
         self.is_running = True
         self.should_redraw = False
@@ -58,7 +59,11 @@ kb = KeyBindings()
 def redraw_header():
     """Helper to redraw the TUI header smoothly."""
     engine = get_engine()
-    print_header(session_state.active_agent, engine.backend.capitalize())
+    dashboard = TUIDashboard(session_state.active_agent, engine.backend.capitalize())
+    dashboard.last_load = session_state.last_load
+    dashboard.response_history = session_state.history
+    console.clear()
+    console.print(dashboard.generate_dashboard())
 
 @kb.add('tab')
 def _(event):
@@ -119,6 +124,7 @@ def handle_command(cmd_text):
             return
         try:
             session_state.loaded_code = load_file(args[0])
+            session_state.last_load = args[0]
             console.print(f"[green]Successfully loaded {args[0]}[/green]")
         except Exception as e:
             console.print(f"[red]Error loading file: {str(e)}[/red]")
@@ -129,6 +135,7 @@ def handle_command(cmd_text):
             content = prompt("paste > ", multiline=True)
             if content:
                 session_state.loaded_code = content
+                session_state.last_load = "Clipboard/Paste"
                 console.print("[green]Code pasted and stored in context.[/green]")
             else:
                 console.print("[yellow]Paste cancelled (empty content).[/yellow]")
@@ -144,7 +151,8 @@ def handle_command(cmd_text):
                 agent_class = AGENT_MAP[session_state.active_agent]
                 agent = agent_class()
                 response = agent.process(session_state.loaded_code)
-                format_response(session_state.active_agent, response)
+                session_state.history.append((session_state.active_agent, response))
+                redraw_header()
             except Exception as e:
                 console.print(f"[red]Error during analysis: {str(e)}[/red]")
                 # Also print the trace for debugging if it's a runtime error
@@ -157,7 +165,8 @@ def handle_command(cmd_text):
                 agent_class = AGENT_MAP["Chat"]
                 agent = agent_class()
                 response = agent.process(cmd_text)
-                format_response("Chat", response)
+                session_state.history.append(("Chat", response))
+                redraw_header()
             except Exception as e:
                 console.print(f"[red]Error during chat: {str(e)}[/red]")
 
