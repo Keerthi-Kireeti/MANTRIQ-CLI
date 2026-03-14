@@ -96,9 +96,24 @@ def generate_ide_layout(active_agent: str, loaded_code: str, history: list, stat
     return layout
 
 def print_header(active_agent: str, backend: str = "Local"):
-    """Prints the unique dashboard."""
+    """Prints a simplified dashboard as a fallback."""
     console.clear()
-    console.print(generate_kilo_dashboard(active_agent, backend))
+    
+    # 1. Pixel Title
+    title_text = get_pixel_title("MANTRIQ", color="bright_blue")
+    console.print(Align.center(title_text))
+    
+    # 2. Simple Status Row
+    status_row = Text.assemble(
+        ("Agent: ", "white"),
+        (active_agent, "agent.active"),
+        ("  |  ", "grey23"),
+        ("Backend: ", "white"),
+        (backend, "backend.info")
+    )
+    console.print(Align.center(status_row))
+    console.print(Align.center(Text("─" * 40, style="grey15")))
+    console.print("\n")
 
 def format_response_frame(agent_name: str, response_text: str):
     """Returns a panel for the response to be used in Live updates."""
