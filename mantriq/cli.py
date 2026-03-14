@@ -155,66 +155,69 @@ def handle_command(cmd_text):
             console.print("[red]Error: No code loaded. Use 'load' or 'paste' first.[/red]")
             return
         
+        response = ""
         with console.status(f"[yellow]MANTRIQ {session_state.active_agent} is thinking...[/yellow]", spinner="dots"):
             try:
                 agent_class = AGENT_MAP[session_state.active_agent]
                 agent = agent_class()
                 response = agent.process(session_state.loaded_code)
                 session_state.history.append((session_state.active_agent, response))
-                
-                # Smooth typing animation
-                from rich.live import Live
-                if session_state.fullscreen:
-                    layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
-                    with Live(layout, refresh_per_second=10) as live:
-                        for i in range(1, len(response) + 1, 10):
-                            session_state.history[-1] = (session_state.active_agent, response[:i])
-                            layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
-                            live.update(layout)
-                            time.sleep(0.01)
-                        session_state.history[-1] = (session_state.active_agent, response)
-                        layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Ready")
-                        live.update(layout)
-                else:
-                    with Live(format_response_frame(session_state.active_agent, ""), refresh_per_second=10) as live:
-                        for i in range(1, len(response) + 1, 10):
-                            live.update(format_response_frame(session_state.active_agent, response[:i]))
-                            time.sleep(0.01)
-                        live.update(format_response_frame(session_state.active_agent, response))
             except Exception as e:
                 console.print(f"[red]Error during analysis: {str(e)}[/red]")
-                if "RuntimeError" in str(type(e)):
-                     console.print("[dim]Check the terminal logs for more details.[/dim]")
+                return
+
+        # Smooth typing animation outside status block
+        from rich.live import Live
+        if session_state.fullscreen:
+            layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
+            with Live(layout, refresh_per_second=10) as live:
+                # Type out the response
+                for i in range(1, len(response) + 1, 5): # Smaller step for better animation
+                    session_state.history[-1] = (session_state.active_agent, response[:i])
+                    layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
+                    live.update(layout)
+                    time.sleep(0.01)
+                session_state.history[-1] = (session_state.active_agent, response)
+                layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Ready")
+                live.update(layout)
+        else:
+            with Live(format_response_frame(session_state.active_agent, ""), refresh_per_second=10) as live:
+                for i in range(1, len(response) + 1, 5):
+                    live.update(format_response_frame(session_state.active_agent, response[:i]))
+                    time.sleep(0.01)
+                live.update(format_response_frame(session_state.active_agent, response))
     else:
         # If it's not a recognized command, treat it as a chat query
+        response = ""
         with console.status(f"[yellow]MANTRIQ is thinking...[/yellow]", spinner="dots"):
             try:
                 agent_class = AGENT_MAP["Chat"]
                 agent = agent_class()
                 response = agent.process(cmd_text)
                 session_state.history.append(("Chat", response))
-                
-                # Smooth typing animation
-                from rich.live import Live
-                if session_state.fullscreen:
-                    layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
-                    with Live(layout, refresh_per_second=10) as live:
-                        for i in range(1, len(response) + 1, 10):
-                            session_state.history[-1] = ("Chat", response[:i])
-                            layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
-                            live.update(layout)
-                            time.sleep(0.01)
-                        session_state.history[-1] = ("Chat", response)
-                        layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Ready")
-                        live.update(layout)
-                else:
-                    with Live(format_response_frame("Chat", ""), refresh_per_second=10) as live:
-                        for i in range(1, len(response) + 1, 10):
-                            live.update(format_response_frame("Chat", response[:i]))
-                            time.sleep(0.01)
-                        live.update(format_response_frame("Chat", response))
             except Exception as e:
                 console.print(f"[red]Error during chat: {str(e)}[/red]")
+                return
+
+        # Smooth typing animation outside status block
+        from rich.live import Live
+        if session_state.fullscreen:
+            layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
+            with Live(layout, refresh_per_second=10) as live:
+                for i in range(1, len(response) + 1, 5):
+                    session_state.history[-1] = ("Chat", response[:i])
+                    layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
+                    live.update(layout)
+                    time.sleep(0.01)
+                session_state.history[-1] = ("Chat", response)
+                layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Ready")
+                live.update(layout)
+        else:
+            with Live(format_response_frame("Chat", ""), refresh_per_second=10) as live:
+                for i in range(1, len(response) + 1, 5):
+                    live.update(format_response_frame("Chat", response[:i]))
+                    time.sleep(0.01)
+                live.update(format_response_frame("Chat", response))
 
 @app.command()
 def main():
