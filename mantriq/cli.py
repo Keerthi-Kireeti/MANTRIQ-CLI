@@ -16,7 +16,7 @@ import typer
 
 from mantriq.agents import AGENT_MAP
 from mantriq.utils.file_loader import load_file
-from mantriq.utils.formatter import format_response_frame, format_help, print_header
+from mantriq.utils.formatter import format_response_frame, format_help, print_header, generate_ide_layout
 from mantriq.core.llm_engine import get_engine
 
 # Initialize Typer app
@@ -31,6 +31,8 @@ class MantriqSession:
         self.last_load = "None"
         self.is_running = True
         self.should_redraw = False
+        self.fullscreen = False
+        self.history = []
 
     @property
     def active_agent(self):
@@ -57,8 +59,17 @@ kb = KeyBindings()
 
 def redraw_header():
     """Helper to redraw the TUI header smoothly."""
-    engine = get_engine()
-    print_header(session_state.active_agent, engine.backend.capitalize())
+    if session_state.fullscreen:
+        layout = generate_ide_layout(
+            session_state.active_agent, 
+            session_state.loaded_code, 
+            session_state.history
+        )
+        console.clear()
+        console.print(layout)
+    else:
+        engine = get_engine()
+        print_header(session_state.active_agent, engine.backend.capitalize())
 
 @kb.add('tab')
 def _(event):
@@ -113,6 +124,9 @@ def handle_command(cmd_text):
         console.print(f"[bold green]Current Active Agent: {session_state.active_agent}[/bold green]")
     elif cmd == "refresh":
         redraw_header()
+    elif cmd == "full":
+        session_state.fullscreen = not session_state.fullscreen
+        redraw_header()
     elif cmd == "load":
         if not args:
             console.print("[red]Error: Please specify a file path.[/red]")
@@ -146,16 +160,27 @@ def handle_command(cmd_text):
                 agent_class = AGENT_MAP[session_state.active_agent]
                 agent = agent_class()
                 response = agent.process(session_state.loaded_code)
+                session_state.history.append((session_state.active_agent, response))
                 
                 # Smooth typing animation
                 from rich.live import Live
-                with Live(format_response_frame(session_state.active_agent, ""), refresh_per_second=10) as live:
-                    # Type out the response 10 characters at a time for smoothness
-                    for i in range(1, len(response) + 1, 10):
-                        live.update(format_response_frame(session_state.active_agent, response[:i]))
-                        time.sleep(0.01)
-                    # Final update to ensure full text is shown
-                    live.update(format_response_frame(session_state.active_agent, response))
+                if session_state.fullscreen:
+                    layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
+                    with Live(layout, refresh_per_second=10) as live:
+                        for i in range(1, len(response) + 1, 10):
+                            session_state.history[-1] = (session_state.active_agent, response[:i])
+                            layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
+                            live.update(layout)
+                            time.sleep(0.01)
+                        session_state.history[-1] = (session_state.active_agent, response)
+                        layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Ready")
+                        live.update(layout)
+                else:
+                    with Live(format_response_frame(session_state.active_agent, ""), refresh_per_second=10) as live:
+                        for i in range(1, len(response) + 1, 10):
+                            live.update(format_response_frame(session_state.active_agent, response[:i]))
+                            time.sleep(0.01)
+                        live.update(format_response_frame(session_state.active_agent, response))
             except Exception as e:
                 console.print(f"[red]Error during analysis: {str(e)}[/red]")
                 if "RuntimeError" in str(type(e)):
@@ -167,14 +192,27 @@ def handle_command(cmd_text):
                 agent_class = AGENT_MAP["Chat"]
                 agent = agent_class()
                 response = agent.process(cmd_text)
+                session_state.history.append(("Chat", response))
                 
                 # Smooth typing animation
                 from rich.live import Live
-                with Live(format_response_frame("Chat", ""), refresh_per_second=10) as live:
-                    for i in range(1, len(response) + 1, 10):
-                        live.update(format_response_frame("Chat", response[:i]))
-                        time.sleep(0.01)
-                    live.update(format_response_frame("Chat", response))
+                if session_state.fullscreen:
+                    layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
+                    with Live(layout, refresh_per_second=10) as live:
+                        for i in range(1, len(response) + 1, 10):
+                            session_state.history[-1] = ("Chat", response[:i])
+                            layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Streaming...")
+                            live.update(layout)
+                            time.sleep(0.01)
+                        session_state.history[-1] = ("Chat", response)
+                        layout = generate_ide_layout(session_state.active_agent, session_state.loaded_code, session_state.history, status="Ready")
+                        live.update(layout)
+                else:
+                    with Live(format_response_frame("Chat", ""), refresh_per_second=10) as live:
+                        for i in range(1, len(response) + 1, 10):
+                            live.update(format_response_frame("Chat", response[:i]))
+                            time.sleep(0.01)
+                        live.update(format_response_frame("Chat", response))
             except Exception as e:
                 console.print(f"[red]Error during chat: {str(e)}[/red]")
 

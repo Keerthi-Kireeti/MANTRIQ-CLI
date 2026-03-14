@@ -29,72 +29,71 @@ custom_theme = Theme({
 console = Console(theme=custom_theme)
 
 def get_pixel_title(text: str, color: str = "bright_blue"):
-    """Generates a pixel-style ASCII art title."""
-    fig = pyfiglet.Figlet(font='slant') # 'slant' for a more dynamic and attractive look
+    """Generates a clear pixel-style ASCII art title with separated letters."""
+    # 'big' or 'standard' fonts often have better spacing between 'M' and 'A'
+    fig = pyfiglet.Figlet(font='big') 
     ascii_art = fig.renderText(text)
     return Text(ascii_art, style=color)
 
-def generate_kilo_dashboard(active_agent: str, backend: str = "Local", tip_text: str = None):
-    """Generates the centered unique dashboard matching the reference image."""
+def generate_ide_layout(active_agent: str, loaded_code: str, history: list, status: str = "Ready"):
+    """Generates a true IDE-like layout for the terminal."""
     layout = Layout()
     
-    # Header: Pixel Title
-    title_art = get_pixel_title("MANTRIQ", color="bright_blue")
-    header = Align.center(title_art, vertical="middle")
-    
-    # Central Box (Dark Grey Panel)
-    search_prompt = Text("Ask anything... \"What is the tech stack of this project?\"", style="grey37")
-    
-    # Agents list with active highlight
-    agents = ["Chat", "Explain", "Debug", "Review", "Optimize"]
-    agent_row = Text()
-    for agent in agents:
-        if agent == active_agent:
-            agent_row.append(f"{agent} ", style="agent.active")
-        else:
-            agent_row.append(f"{agent} ", style="grey50")
-            
-    central_content = Text.assemble(
-        search_prompt, "\n\n",
-        ("Code  ", "bright_blue"), agent_row
+    # Split into Header, Main (Editor + Sidebar), and Footer
+    layout.split(
+        Layout(name="header", size=10),
+        Layout(name="main", ratio=1),
+        Layout(name="footer", size=3)
     )
     
-    central_panel = Panel(
-        Align.left(central_content),
-        box=box.SQUARE,
-        border_style="grey23",
-        width=80,
-        padding=(1, 2),
-        style="on grey11"
+    # Main split into Editor (left) and Sidebar (right)
+    layout["main"].split_row(
+        Layout(name="editor", ratio=2),
+        Layout(name="sidebar", ratio=1)
     )
     
-    # Shortcuts
-    shortcuts = Text.assemble(
-        ("tab", "shortcut.key"), (" agents  ", "shortcut.label"),
-        ("ctrl+q", "shortcut.key"), (" commands", "shortcut.label")
+    # Header Content
+    title_art = get_pixel_title("MANTRIQ", "bright_blue")
+    layout["header"].update(
+        Panel(Align.center(title_art), border_style="blue", box=box.ROUNDED)
     )
     
-    # Tip
-    if not tip_text:
-        tip_text = f"Switch to {active_agent} agent to get suggestions for your code"
+    # Editor Content (Code Viewer)
+    code_content = loaded_code if loaded_code else "No code loaded. Use 'load <file>' to begin."
+    layout["editor"].update(
+        Panel(
+            Markdown(f"```python\n{code_content}\n```"),
+            title="[bold cyan]Editor / Code Context[/bold cyan]",
+            border_style="cyan",
+            box=box.ROUNDED
+        )
+    )
+    
+    # Sidebar Content (Agent + Chat History)
+    history_text = Text()
+    for agent, msg in history[-5:]: # Show last 5 messages
+        history_text.append(f"● {agent}: ", style="bright_blue bold")
+        history_text.append(f"{msg[:50]}...\n", style="white")
         
-    tip = Text.assemble(
-        ("● Tip ", "tip.bullet"),
-        (tip_text, "tip.text")
+    sidebar_table = Table.grid(padding=1)
+    sidebar_table.add_row("[bold cyan]Active Agent:[/bold cyan]", f"[white]{active_agent}[/white]")
+    sidebar_table.add_row("[bold cyan]Status:[/bold cyan]", f"[green]{status}[/green]")
+    
+    layout["sidebar"].split(
+        Layout(Panel(sidebar_table, title="[bold blue]Agent Info[/bold blue]", border_style="blue")),
+        Layout(Panel(history_text, title="[bold blue]Recent Activity[/bold blue]", border_style="blue"))
     )
     
-    # Build the full view
-    full_view = Table.grid(expand=True)
-    full_view.add_column(justify="center")
-    full_view.add_row("\n" * 4)
-    full_view.add_row(header)
-    full_view.add_row("\n")
-    full_view.add_row(Align.center(central_panel))
-    full_view.add_row(Align.center(shortcuts))
-    full_view.add_row("\n" * 2)
-    full_view.add_row(Align.center(tip))
+    # Footer Content
+    footer_text = Text.assemble(
+        ("TAB", "bright_blue"), (" Next Agent  ", "grey50"),
+        ("CTRL+Q", "bright_blue"), (" Exit  ", "grey50"),
+        ("LOAD", "bright_blue"), (" Import  ", "grey50"),
+        ("FULL", "bright_blue"), (" Fullscreen Toggle", "grey50")
+    )
+    layout["footer"].update(Panel(Align.center(footer_text), border_style="blue", box=box.MINIMAL))
     
-    return full_view
+    return layout
 
 def print_header(active_agent: str, backend: str = "Local"):
     """Prints the unique dashboard."""
